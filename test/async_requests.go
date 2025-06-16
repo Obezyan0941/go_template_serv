@@ -23,7 +23,7 @@ func makeRequest(url string, wg *sync.WaitGroup) {
 
 func main() {
 	url := "http://localhost:8080/async" // URL для запроса
-	requestCount := 220                  // Количество одновременных запросов
+	requestCount := 200                  // Количество одновременных запросов
 
 	var wg sync.WaitGroup
 

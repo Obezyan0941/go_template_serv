@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sync"
@@ -17,13 +18,25 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "This is a main page!")
 }
 
-// rate limiting middleware
+// rate limiting throttling middleware
 func rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !limiter.Allow() {
-			http.Error(w, "Слишком много запросов, попробуйте позже", http.StatusTooManyRequests)
+		// Создаем контекст с таймаутом ожидания
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		
+		// Ждем доступного токена (блокируем выполнение)
+		if err := limiter.Wait(ctx); err != nil {
+			// Если таймаут ожидания истек
+			http.Error(w, "Превышено время ожидания. Попробуйте позже.", http.StatusTooManyRequests)
 			return
 		}
+
+		// Добавляем заголовки с информацией о лимитах
+		w.Header().Set("X-RateLimit-Limit", fmt.Sprint(limiter.Limit()))
+		w.Header().Set("X-RateLimit-Burst", fmt.Sprint(limiter.Burst()))
+		w.Header().Set("X-RateLimit-Remaining", fmt.Sprint(int(limiter.Tokens())))
+
 		next.ServeHTTP(w, r)
 	}
 }
