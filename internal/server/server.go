@@ -2,10 +2,15 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"time"
 	"sync"
 	"net/http"
 
+	"test_backend/internal/db"
+	"test_backend/internal/config"
+
+	"github.com/go-pg/pg/v10"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
 	"github.com/go-chi/chi/v5/middleware"
@@ -15,13 +20,20 @@ type Server struct {
 	router 		*chi.Mux
 	mu	   		sync.Mutex
 	counter		int
-	// db     db.UserRepository
+	db     		*pg.DB
 }
 
 func NewServer() *Server {
+	db_init_data, err := config.LoadDBConfig()
+	db, err := db_manager.NewPostgresConnection(*db_init_data)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	s := &Server{
 		router: chi.NewRouter(),
 		counter: 0,
+		db: db,
 	}
 	s.configureRouter()
 	return s
@@ -39,7 +51,6 @@ func (s *Server) configureRouter() {
 	s.router.Get("/", s.handleHome)
 	s.router.Get("/hello", s.helloHandler)
 	s.router.Get("/async", s.asyncHandler)
-
 }
 
 func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
