@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 )
@@ -17,12 +17,16 @@ func makeRequest(url string, wg *sync.WaitGroup) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Ошибка чтения тела ответа: %v\n", err)
+		return
+	}
 	fmt.Printf("Ответ от %s: статус %d, длина тела %d байт\n", url, resp.StatusCode, len(body))
 }
 
 func main() {
-	url := "http://localhost:8080/async" // URL для запроса
+	url := "http://localhost:8012/async" // URL для запроса
 	requestCount := 200                  // Количество одновременных запросов
 
 	var wg sync.WaitGroup
