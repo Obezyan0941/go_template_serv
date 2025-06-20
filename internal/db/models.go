@@ -7,3 +7,11 @@ type DBConfig struct {
 	Password	string
 	Database	string
 }
+
+type User struct {
+	tableName struct{} `pg:"users_temp"`
+
+	Id			int64
+	Name		string
+	Password 	string
+}

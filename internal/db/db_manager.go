@@ -3,8 +3,10 @@ package db_manager
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/go-pg/pg/v10"
+	"github.com/go-pg/pg/v10/orm"
 )
 
 func NewPostgresConnection(db_data DBConfig) (*pg.DB, error) {
@@ -22,3 +24,36 @@ func NewPostgresConnection(db_data DBConfig) (*pg.DB, error) {
 
 	return db, nil
 }
+
+func CreateSchema(db *pg.DB, model interface{}) error {
+	err := db.Model(model).CreateTable(&orm.CreateTableOptions{
+		IfNotExists: true,
+	})
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	log.Println("Table created")
+	return nil
+}
+
+func TableExists(db *pg.DB, tableName string) (bool, error) {
+	var exists bool
+	_, err := db.QueryOne(pg.Scan(&exists), `
+        SELECT EXISTS (
+            SELECT 1 
+            FROM pg_tables 
+            WHERE schemaname = 'public' 
+            AND tablename = ?
+        )`, tableName)
+	return exists, err
+}
+
+// Usage:
+// exists, err := TableExists(db, "users")
+// if err != nil {
+//     return err
+// }
+// if !exists {
+//     log.Println("Таблица не существует")
+// }

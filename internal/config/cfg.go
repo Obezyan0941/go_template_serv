@@ -1,21 +1,21 @@
 package config
 
 import (
-	"os"
 	"fmt"
 	"log"
-    "reflect"
+	"os"
+	"reflect"
 	"strings"
 
-	"test_backend/internal/db"
+	db_manager "test_backend/internal/db"
 )
 
 func LoadDBConfig() (*db_manager.DBConfig, error) {
 	cfg := &db_manager.DBConfig{
-		Addr:     	getEnv("POSTGRES_HOST"),
-		User:     	getEnv("POSTGRES_USER"),
-		Password:   getEnv("POSTGRES_PASSWORD"),
-		Database:	getEnv("POSTGRES_DB"),
+		Addr:     getEnv("POSTGRES_HOST"),
+		User:     getEnv("POSTGRES_USER_RW"),
+		Password: getEnv("POSTGRES_PASSWORD_RW"),
+		Database: getEnv("POSTGRES_DB"),
 	}
 
 	if err := validateConfig(cfg); err != nil {
@@ -26,9 +26,9 @@ func LoadDBConfig() (*db_manager.DBConfig, error) {
 }
 
 func validateConfig(cfg interface{}) error {
-    v := reflect.ValueOf(cfg)
+	v := reflect.ValueOf(cfg)
 
-	if v.Kind() == reflect.Ptr {	// if recieved a pointer, retreive value
+	if v.Kind() == reflect.Ptr { // if recieved a pointer, retreive value
 		v = v.Elem()
 	}
 	structTypeName := reflect.TypeOf(cfg)
@@ -37,7 +37,7 @@ func validateConfig(cfg interface{}) error {
 		return fmt.Errorf("expected struct, got %s", v.Kind())
 	}
 
-    for i := 0; i < v.NumField(); i++ {
+	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 
 		if field.Kind() != reflect.String {
@@ -45,11 +45,11 @@ func validateConfig(cfg interface{}) error {
 			continue
 		}
 
-        value := field.Interface()
-		if (value == "") {
+		value := field.Interface()
+		if value == "" {
 			return fmt.Errorf("Empty field: %s", value)
 		}
-    }
+	}
 	return nil
 }
 

@@ -3,11 +3,48 @@ package main
 import (
 	"fmt"
 	"io"
+	"bytes"
+	"strconv"
 	"net/http"
+	"encoding/json"
 	"sync"
 )
 
-func makeRequest(url string, wg *sync.WaitGroup) {
+func SendPostRequest(url string, wg *sync.WaitGroup, i int, name string, password string) error {
+	defer wg.Done()
+	requestBody := map[string]string{
+		"name":     name,
+		"password": password,
+	}
+
+	jsonBody, err := json.Marshal(requestBody)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %v", err)
+	}
+
+	fmt.Println(strconv.Itoa(i) + ":\t" +string(body))
+	return nil
+}
+
+func MakeRequest(url string, wg *sync.WaitGroup) {
 	defer wg.Done() // Уменьшаем счетчик WaitGroup при завершении
 
 	resp, err := http.Get(url)
@@ -25,7 +62,7 @@ func makeRequest(url string, wg *sync.WaitGroup) {
 	fmt.Printf("Ответ от %s: статус %d, длина тела %d байт\n", url, resp.StatusCode, len(body))
 }
 
-func main() {
+func RunAsyncRequests() {
 	url := "http://localhost:8012/async" // URL для запроса
 	requestCount := 200                  // Количество одновременных запросов
 
@@ -33,9 +70,29 @@ func main() {
 
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
-		go makeRequest(url, &wg)
+		go MakeRequest(url, &wg)
 	}
 
 	wg.Wait() // Ждём завершения всех горутин
 	fmt.Println("Все запросы завершены.")
+}
+
+func RunAsyncPostRequests() {
+	url := "http://localhost:8012/adduser"
+	requestCount := 20
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < requestCount; i++ {
+		wg.Add(1)
+		go SendPostRequest(url, &wg, i, "biba" + strconv.Itoa(i), "boba" + strconv.Itoa(i+13)  + strconv.Itoa(i * 26))
+	}
+
+	wg.Wait()
+	fmt.Println("Все запросы завершены.")	
+}
+
+
+func main() {
+	RunAsyncPostRequests()
 }

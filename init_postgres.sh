@@ -8,7 +8,7 @@ fi
 
 # Функция для выполнения SQL-команд в контейнере
 exec_psql() {
-  docker exec -i postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<EOF
+  docker exec -i postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} <<EOF
 $1
 EOF
 }
@@ -31,6 +31,10 @@ GRANT CONNECT ON DATABASE $POSTGRES_DB TO app_user;
 # 2. Настраиваем права
 echo "Настройка прав для app_user..."
 exec_psql "
+GRANT CREATE ON SCHEMA public TO biba;
+GRANT USAGE ON SCHEMA public TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO biba;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
 "
