@@ -50,7 +50,7 @@ func TableExists(db *pg.DB, tableName string) (bool, error) {
 	return exists, err
 }
 
-func GetUserDataByID(userID int, db *pg.DB, userModel User) (*User, error) {
+func GetUserDataByID(userID int, db *pg.DB) (*User, error) {
 	user := &User{Id: int64(userID)}
 	err := db.Model(user).WherePK().Select()
 	return user, err

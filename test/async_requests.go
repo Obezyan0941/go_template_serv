@@ -1,20 +1,20 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
-	"bytes"
-	"strconv"
 	"net/http"
-	"encoding/json"
+	"strconv"
 	"sync"
+	"strings"
 )
 
-func SendPostRequest(url string, wg *sync.WaitGroup, i int, name string, password string) error {
+func SendPostRequest(url string, wg *sync.WaitGroup, i int, requestBody map[string]string, token string, requestType string) error {
 	defer wg.Done()
-	requestBody := map[string]string{
-		"name":     name,
-		"password": password,
+	if 	strings.ToUpper(requestType) != "POST" && strings.ToUpper(requestType) != "GET" {
+		return fmt.Errorf("requestType should either be POST or GET")
 	}
 
 	jsonBody, err := json.Marshal(requestBody)
@@ -22,10 +22,11 @@ func SendPostRequest(url string, wg *sync.WaitGroup, i int, name string, passwor
 		return err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest(requestType, url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
 	}
+	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -40,7 +41,7 @@ func SendPostRequest(url string, wg *sync.WaitGroup, i int, name string, passwor
 		return fmt.Errorf("failed to read response: %v", err)
 	}
 
-	fmt.Println(strconv.Itoa(i) + ":\t" +string(body))
+	fmt.Println(strconv.Itoa(i) + ". body:\t" + string(body) + "status: " + resp.Status)
 	return nil
 }
 
@@ -49,17 +50,17 @@ func MakeRequest(url string, wg *sync.WaitGroup) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Printf("Ошибка при запросе к %s: %v\n", url, err)
+		fmt.Printf("Error making requests %s: %v\n", url, err)
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("Ошибка чтения тела ответа: %v\n", err)
+		fmt.Printf("Error reading response body: %v\n", err)
 		return
 	}
-	fmt.Printf("Ответ от %s: статус %d, длина тела %d байт\n", url, resp.StatusCode, len(body))
+	fmt.Printf("Status: %d, body: %s", resp.StatusCode, string(body))
 }
 
 func RunAsyncRequests() {
@@ -78,20 +79,25 @@ func RunAsyncRequests() {
 }
 
 func RunAsyncPostRequests() {
-	url := "http://localhost:8012/adduser"
-	requestCount := 20
+	url := "http://localhost:8012/authaction"
+	requestCount := 1
 
 	var wg sync.WaitGroup
+	var token string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTEsIm5hbWUiOiJiaWJhIiwic3ViIjoiYmliYSIsImV4cCI6MTc1MDcwNzAzNywiaWF0IjoxNzUwNzA2MTM3LCJqdGkiOiI3NGE1OTAyYS0yMDQyLTQxZmMtOTkwNS00ZGQ4ZDczYzNiYWQifQ.xW8twWfk1vd3gCx3R5ayX3z68PiMz1QS3vUiuEWgih4"
+
+	requestBody := map[string]string{
+		"name":     "biba",
+		"password": "boba",
+	}
 
 	for i := 0; i < requestCount; i++ {
 		wg.Add(1)
-		go SendPostRequest(url, &wg, i, "biba" + strconv.Itoa(i), "boba" + strconv.Itoa(i+13)  + strconv.Itoa(i * 26))
+		go SendPostRequest(url, &wg, i, requestBody, token, "GET")
 	}
 
 	wg.Wait()
-	fmt.Println("Все запросы завершены.")	
+	fmt.Println("Все запросы завершены.")
 }
-
 
 func main() {
 	RunAsyncPostRequests()
