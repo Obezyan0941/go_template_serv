@@ -1,2 +1,4 @@
-data
+/.temp
+/data
 .env
+.git
